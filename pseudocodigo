@@ -1,0 +1,14 @@
+pseudocódigo
+
+añadir estado inicial a automata.
+
+automata = q0
+
+para cada estado en automata
+    para cada simbolo
+        para cada estado_individual componiendo ese estado
+            (pack es un set)
+            pack += estados accesibles
+        si no tenemos ya un estado igual en automata, lo añadimos.
+        cierre transitivo a los estados de pack
+        añadimos la transicion de estado a pack mediante simbolo
