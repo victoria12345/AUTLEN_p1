@@ -1,8 +1,14 @@
 CC=gcc
 CFLAGS=-Wall -g -ansi -pedantic
-EJS= prueba
+EJS= prueba prueba_afnd
 
 all: $(EJS)
+
+prueba_afnd: prueba_afnd.o
+	$(CC) $(CFLAGS) -o prueba_afnd prueba_afnd.o transforma.o afnd.o pack.o
+
+prueba_afnd.o: prueba_afnd.c transforma.o afnd.o pack.o
+	$(CC) $(CFLAGS) -c prueba_afnd.c
 
 prueba: prueba.o
 	$(CC) $(CFLAGS) -o prueba prueba.o transforma.o afnd.o pack.o
@@ -19,5 +25,9 @@ transforma.o: transforma.c transforma.h pack.o
 pack.o: pack.c pack.h
 	$(CC) $(CFLAGS) -c pack.c
 
+img: 
+	dot -Tpng af11.dot > af11.png
+	dot -Tpng afd.dot > afd.png
+
 clean:
-	rm -f *.o $(EJS) *.png
+	rm -f *.o $(EJS) *.png *.dot
