@@ -9,5 +9,6 @@
 
 AFND* AFNDTransforma(AFND* p_afnd);
 Pack* nuevo_pack(AFND* afnd, Pack* est, int simb, int num_estados, int* pertenece_f);
+Pack* nuevo_pack_lambda(AFND* afnd, Pack* est, int num_estados);
 
 #endif
