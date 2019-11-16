@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -g -ansi -pedantic
-EJS= prueba prueba_afnd
+EJS= prueba prueba_afnd prueba3
 
 all: $(EJS)
 
@@ -9,6 +9,12 @@ prueba_afnd: prueba_afnd.o
 
 prueba_afnd.o: prueba_afnd.c transforma.o afnd.o pack.o
 	$(CC) $(CFLAGS) -c prueba_afnd.c
+
+prueba3: prueba3.o
+	$(CC) $(CFLAGS) -o prueba3 prueba3.o transforma.o afnd.o pack.o
+
+prueba3.o: prueba3.c transforma.o afnd.o pack.o
+	$(CC) $(CFLAGS) -c prueba3.c
 
 prueba: prueba.o
 	$(CC) $(CFLAGS) -o prueba prueba.o transforma.o afnd.o pack.o

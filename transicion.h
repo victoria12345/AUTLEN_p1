@@ -8,8 +8,8 @@
 
 typedef struct _Transicion
 {
-  char destino[100];
-  char simbolo[100];
+  char destino[100]; /*Nombre del destino de la transicion*/
+  char simbolo[100]; /*simbolo que provoca la transicion*/
 } Transicion;
 
 

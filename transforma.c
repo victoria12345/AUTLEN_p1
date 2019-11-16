@@ -3,6 +3,11 @@
 #include "afnd.h"
 #include "pack.h"
 
+
+/**
+ * Funcion que transforma un automata no determinista en uno determinista
+ * p_afnd: automata no determinista que queremos convertir
+*/
 AFND* AFNDTransforma(AFND* p_afnd){
     int i, j, index_p = 0;
     int inicial = AFNDIndiceEstadoInicial(p_afnd);
@@ -17,12 +22,14 @@ AFND* AFNDTransforma(AFND* p_afnd){
     Pack* inicial_p;
     AFND * afd;
 
+    /*Array de estados del pack inicial*/
     array_estados = (int*)malloc(sizeof(array_estados[0]) * num_estados);
     if(array_estados == NULL){
         return NULL;
     }
 
     /*Annadimos el estado inicial al nuevo autómata*/
+    /*Para ello tenemos que crear su pack*/
     strcpy(ini ,AFNDNombreEstadoEn(p_afnd, inicial));
     if(AFNDTipoEstadoEn(p_afnd, inicial) == INICIAL_Y_FINAL){
         ini_fin = INICIAL_Y_FINAL;
@@ -45,43 +52,50 @@ AFND* AFNDTransforma(AFND* p_afnd){
             array_estados[i] = 0;
         }
     }
-
+    /*Creamos el pack del estado inicial y lo annadimos al array de packs 
+     que seran los nuevos estados del automata determinista*/
     inicial_p = pack(array_estados, num_estados, ini, ini_fin);
     array_packs[index_p] = inicial_p;
     index_p ++;
 
-    /*Exploramos los estados*/
+
+    /*Exploramos los estados (= packs del array_packs)
+    y vemos hacia donde pueden transitar*/
     for(i = 0; i < index_p; i++ ){
         Pack *p_tmp;
 
-        p_tmp = pack(array_packs[i]->estados, num_estados, "dummy", 0);
+        p_tmp = pack(array_packs[i]->estados, num_estados, "temporal", NORMAL);
 
+        /*array_packs_cerrados: lista de packs ya explorados*/
         if(pertenece(array_packs_cerrados, p_tmp, index_cerrados) != 0){
-
+            /*Si no se ha explorado todavia lo annadimos y posteriormente exploramos*/
             array_packs_cerrados[index_cerrados] = p_tmp;
             index_cerrados++;
 
         } else {
-
+            /*como ya se ha explorado saltamos al siguiente pack*/
             continue;
 
         }
 
-        /*Exploramos el simbolo*/
-
+        /*Exploramos por simbolos*/
         for(j = 0; j < num_simbolos; j++){
             Pack *p;
             int pertenece_f = -1;
 
-            p = nuevo_pack(p_afnd, p_tmp /* array_packs[i]*/, j, num_estados, &pertenece_f);
-            imprime(p);
+            /*pack destino desde p_tmp con el simbolo de inidice j*/
+            /*Utilizamos p_tmp que es una copia de array_packs[i] antes de haberlo explorado
+                con algun simbolo */
+            p = nuevo_pack(p_afnd, p_tmp, j, num_estados, &pertenece_f);
+
+            /*si p esta formado por algun estado, es decir, habia transicion a algun
+                estado desde p_tmp cno ese simbolo*/
             if(pertenece_f == 1){
                 char* char_simb = AFNDSimboloEn(p_afnd, j);
 
-                /*Si no se ha creado lo annadimos*/
+                /*Si no se ha creado en el aut. determinista lo annadimos y annadimos
+                    transicion*/
                 if(pertenece(array_packs, p, index_p) != 0){
-                    /* printf("El pack q estoy mirando %s\n", p->nombre);
-                    imprime(p); */
                     array_packs[index_p] = p;
                     index_p ++;
                     annadir_transicion(array_packs[i], p->nombre, char_simb);
@@ -120,66 +134,28 @@ AFND* AFNDTransforma(AFND* p_afnd){
 
     /*Liberamos memoria*/
     for(i = 0; i < index_p; i++){
-        imprime(array_packs[i]);
         destroy(array_packs[i]);
+    }
+
+    for(i = 0; i < index_cerrados; i++){
+        if(array_packs_cerrados[i] != NULL){
+            destroy(array_packs_cerrados[i]);
+        }
     }
     free(array_estados);
     return afd;
 }
 
-Pack* nuevo_pack_lambda(AFND* afnd, Pack* est, int num_estados){
-    int i, j;
-    Pack *nuevo;
-    int *estados;
-    int tipo = NORMAL;
-    char nombre[TAM_MAX_NOMBRE] = "";
-    int* estados_pack = get_estados(est);
-
-    estados = (int*)malloc(sizeof(estados[0]) * num_estados);
-    if(estados == NULL){
-        return NULL;
-    }
-
-    for(i = 0; i < num_estados; i++){
-        estados[i] = 0;
-    }  
-
-    /*Miramos las transiciones lambda*/
-    for(i = 0; i < num_estados; i++){
-        for(j = 0; j< num_estados; j++){
-
-            /*estados_pack[i]: del estdo inicial miramos hacia donde podemos llegar con lambda*/
-            /*estados[i]: miramos desde los estados transitados a traves d eun simbolo
-                          hasta donde podemos llegar con lambda*/
-            if(estados_pack[i] == 1 /*|| estados[i] == 1*/){
-                if(1 == AFNDCierreLTransicionIJ(afnd, i, j)){
-                    estados[j] = 1;
-
-                    if(AFNDTipoEstadoEn(afnd, j) == FINAL || AFNDTipoEstadoEn(afnd, j) == INICIAL_Y_FINAL){
-                        tipo = FINAL;
-                    }
-                }
-            }
-        } 
-    }
-    
-
-    /*Ahora tenemos un pack con 1 en los estados que lo conforman
-            Construimos su nombre*/
-    for(i = 0; i < num_estados; i++){
-        if(estados[i] == 1){
-            strcat(nombre, AFNDNombreEstadoEn(afnd, i));
-        }
-    }
-
-    nuevo = pack(estados, num_estados, nombre, tipo);
-    free(estados);
-    return nuevo;
-}
 
 /**
-* est: pack con los estados correspondientes del automata inicial
-* simb: simbolo que exploramos para ver el nuevo estado
+ * Devuelve el pack = nuevo estado, al que podemos transitar desde
+ * un estado (= pack est) y a traves de un simbolo
+ * 
+ * afnd: automata no determinista que estamos transformando 
+ * est: pack con los estados correspondientes del automata inicial
+ * simb: simbolo que exploramos para ver el nuevo estado
+ * num_estados: numero de estados del automata no determinista
+ * pertenece_f: flag para saber si va a tener algun estado el nuevo pack
 */
 Pack* nuevo_pack(AFND* afnd, Pack* est, int simb, int num_estados, int* pertenece_f){
     int i, j;
@@ -198,9 +174,10 @@ Pack* nuevo_pack(AFND* afnd, Pack* est, int simb, int num_estados, int* pertenec
         estados[i] = 0;
     }  
 
-    
+    /*Inicialmente vemos las transiciones que hay a los distintos estados
+      con el simbolo introducido*/
     for(i = 0; i < num_estados; i++){
-        /*Si el estado[i] forma parte del pack*/
+        /*Si el estado_pack[i] forma parte del pack*/
         if(estados_pack[i] == 1){
             for(j = 0; j<num_estados; j++){
                 /*Miro si hay una transicion en el automata ND inicial*/
@@ -208,6 +185,7 @@ Pack* nuevo_pack(AFND* afnd, Pack* est, int simb, int num_estados, int* pertenec
                 if ( 1 == AFNDTransicionIndicesEstadoiSimboloEstadof(afnd, i, simb, j)){
                     *pertenece_f = 1;
                     estados[j] = 1;
+                    /*Vemos si tiene estado distinto al normal*/
                     if(AFNDTipoEstadoEn(afnd, j) == FINAL || AFNDTipoEstadoEn(afnd, j) == INICIAL_Y_FINAL){
                         tipo=FINAL;
                     }
@@ -217,24 +195,16 @@ Pack* nuevo_pack(AFND* afnd, Pack* est, int simb, int num_estados, int* pertenec
         
     }
 
-    printf("Acabo de añadir simbolos\n");
-    for(i = 0; i < num_estados; i++){
-        printf("%d,\t", estados[i]);
-    }
-    printf("\n");
-
-    /*Miramos las transiciones lambda*/
+    /*Miramos si hay alguna transicion lambda*/
     for(i = 0; i < num_estados; i++){
         for(j = 0; j< num_estados; j++){
-
-            /*estados_pack[i]: del estdo inicial miramos hacia donde podemos llegar con lambda*/
-            /*estados[i]: miramos desde los estados transitados a traves d eun simbolo
+            /*estados[i]: miramos desde los estados transitados a traves de un simbolo
                           hasta donde podemos llegar con lambda*/
             if(estados[i] == 1){
                 if(1 == AFNDCierreLTransicionIJ(afnd, i, j)){
                     *pertenece_f = 1;
                     estados[j] = 1;
-
+                    /*Vemos si tiene estado distinto al normal*/
                     if(AFNDTipoEstadoEn(afnd, j) == FINAL || AFNDTipoEstadoEn(afnd, j) == INICIAL_Y_FINAL){
                         tipo = FINAL;
                     }
@@ -251,6 +221,7 @@ Pack* nuevo_pack(AFND* afnd, Pack* est, int simb, int num_estados, int* pertenec
         }
     }
 
+    /*Creamos el nuevo pack y es el que devolvemos*/
     nuevo = pack(estados, num_estados, nombre, tipo);
     free(estados);
     return nuevo;

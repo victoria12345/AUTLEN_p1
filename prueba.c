@@ -12,7 +12,7 @@ int main(int argc, char ** argv)
 	AFND * p_afnd;
 	AFND * afd;
 	
-	p_afnd= AFNDNuevo("af11", 3, 2);
+	p_afnd= AFNDNuevo("af12", 3, 2);
 	
 	AFNDInsertaSimbolo(p_afnd,"0");
 	AFNDInsertaSimbolo(p_afnd, "1");
